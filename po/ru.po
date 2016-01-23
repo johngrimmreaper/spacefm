@@ -2556,13 +2556,13 @@ msgid "Creation Failed"
 msgstr "Создание не удалось"
 
 #: ../src/settings.c:4472
-msgid "An error occured creating a README file for this command."
+msgid "An error occurred creating a README file for this command."
 msgstr "Произошла ошибка при создании файла README для этой команды."
 
 #: ../src/settings.c:4633 ../src/ptk/ptk-handler.c:1281
 #, c-format
 msgid ""
-"An error occured copying command files\n"
+"An error occurred copying command files\n"
 "\n"
 "%s"
 msgstr "Произошла ошибка при копировании файлов команды\n\n%s"
@@ -2575,7 +2575,7 @@ msgstr "Ошибка команды копирования"
 #: ../src/settings.c:4668
 #, c-format
 msgid ""
-"An error occured copying command data files\n"
+"An error occurred copying command data files\n"
 "\n"
 "%s"
 msgstr "Произошла ошибка при копировании файлов данных для команды\n\n%s"
@@ -7303,7 +7303,7 @@ msgid "Change Desktop Item Name"
 msgstr "Сменить имя элемента рабочего стола"
 
 #: ../src/desktop/desktop-window.c:2090
-msgid "An error occured renaming this desktop item."
+msgid "An error occurred renaming this desktop item."
 msgstr "Произошла ошибка при переименовании элемента рабочего стола."
 
 #: ../src/find-files.c:279
