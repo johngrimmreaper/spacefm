@@ -3813,13 +3813,23 @@ on_folder_view_button_press_event ( GtkWidget *widget,
              * file_browser->button_press to determine if row was already
              * activated or user clicked on non-row */
             ret = TRUE;
-        else if ( !app_settings.single_click )
-            /* sfm 1.0.6 set skip_release for Icon/Compact to prevent file
-             * under cursor being selected when entering dir with double-click.
-             * Also see conditional reset of skip_release in
-             * ptk_file_browser_chdir(). See also
-             * on_folder_view_button_release_event() */
-            file_browser->skip_release = TRUE;
+        else if ( file_browser->view_mode == PTK_FB_ICON_VIEW
+               || file_browser->view_mode == PTK_FB_COMPACT_VIEW )
+        {
+            tree_path = exo_icon_view_get_path_at_pos( EXO_ICON_VIEW( widget ),
+                                                       event->x, event->y );
+            if ( !tree_path )
+            {
+                ptk_file_browser_go_up( NULL, file_browser );
+                ret = TRUE;
+            }
+            else
+            {
+                gtk_tree_path_free( tree_path );
+                if ( !app_settings.single_click )
+                    file_browser->skip_release = TRUE;
+            }
+        }
     }
 /*  go up if double-click in blank area of file list - this was disabled due
  * to complaints about accidental clicking
