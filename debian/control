@@ -1,0 +1,44 @@
+Source: spacefm
+Section: utils
+Priority: optional
+Maintainer: Reaper <JohnGrimmReaper@disroot.org>
+Build-Depends:
+ debhelper-compat (= 13),
+ desktop-file-utils,
+ intltool,
+ libffmpegthumbnailer-dev,
+ libglib2.0-dev,
+ libgtk2.0-dev,
+ libstartup-notification0-dev,
+ libudev-dev,
+ libx11-dev,
+ pkgconf | pkg-config,
+ shared-mime-info
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://ignorantguru.github.io/spacefm/
+Vcs-Browser: https://github.com/johngrimmreaper/spacefm
+Vcs-Git: https://github.com/johngrimmreaper/spacefm.git
+
+Package: spacefm
+Architecture: any
+Depends:
+ desktop-file-utils,
+ shared-mime-info,
+ ${misc:Depends},
+ ${shlibs:Depends}
+Recommends:
+ eject,
+ lsof,
+ udevil | udisks2,
+ wget
+Suggests:
+ fuseiso,
+ jmtpfs
+Description: multi-panel tabbed file manager
+ SpaceFM is a multi-panel tabbed file manager with a built-in virtual file
+ system, udev-based device management, customizable menus, desktop integration,
+ and Bash integration.
+ .
+ This maintained build uses the GTK2 interface with libudev, startup
+ notification, and video thumbnail support.
