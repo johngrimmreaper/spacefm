@@ -14,7 +14,7 @@ Build-Depends:
  libx11-dev,
  pkgconf | pkg-config,
  shared-mime-info
-Standards-Version: 4.7.0
+Standards-Version: 4.6.2
 Rules-Requires-Root: no
 Homepage: https://ignorantguru.github.io/spacefm/
 Vcs-Browser: https://github.com/johngrimmreaper/spacefm
