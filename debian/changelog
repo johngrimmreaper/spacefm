@@ -12,5 +12,7 @@ spacefm (1.0.6+reaper5-1) UNRELEASED; urgency=medium
     and video thumbnail support enabled.
   * Add -fcommon build flag for compatibility with legacy global
     definitions under modern GCC.
+  * Include parent-directory navigation on empty-area double-click from
+    upstream PR #699.
 
  -- Reaper <JohnGrimmReaper@disroot.org>  Sat, 04 Jul 2026 03:20:00 +0000
