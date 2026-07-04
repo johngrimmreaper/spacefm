@@ -2684,7 +2684,7 @@ exo_icon_view_key_press_event (GtkWidget   *widget,
     new_event = gdk_event_copy ((GdkEvent *) event);
     g_object_unref (G_OBJECT (new_event->key.window));
     new_event->key.window = gtk_widget_get_window (GTK_WIDGET(icon_view->priv->search_entry));
-    g_object_ref (G_OBJECT (gtk_widget_get_window (GTK_WIDGET(new_event->key.window))));
+    g_object_ref (G_OBJECT (new_event->key.window));
 
     /* send the event to the search entry. If the "preedit-changed" signal is
    * emitted during this event, priv->search_imcontext_changed will be set.
