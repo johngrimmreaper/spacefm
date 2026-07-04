@@ -1,0 +1,12 @@
+spacefm (1.0.6+reaper1-1) UNRELEASED; urgency=medium
+
+  * New maintained SpaceFM package based on upstream 1.0.6.
+  * Include crash fix for unmounting volumes.
+  * Include C23/compiler compatibility fixes.
+  * Include sys/sysmacros.h for major()/minor() declarations on modern Linux.
+  * Build GTK2 interface with libudev, startup notification, desktop integration,
+    and video thumbnail support enabled.
+  * Add -fcommon build flag for compatibility with legacy global
+    definitions under modern GCC.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Sat, 04 Jul 2026 03:20:00 +0000
