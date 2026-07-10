@@ -1,4 +1,4 @@
-spacefm (1.0.6+reaper5-1) UNRELEASED; urgency=medium
+spacefm (1.0.6+reaper6-1) UNRELEASED; urgency=medium
 
   * New maintained SpaceFM package based on upstream 1.0.6.
   * Include crash fix for unmounting volumes.
@@ -10,9 +10,10 @@ spacefm (1.0.6+reaper5-1) UNRELEASED; urgency=medium
   * Include dash-compatible configure fixes from upstream PR #813.
   * Include reviewed GCC 14 build fixes from upstream PR #816.
   * Include activation fix for selected items without focus from upstream PR #749.
+  * Include parent navigation on empty-area double-click inspired by upstream PR #699.
   * Build GTK2 interface with libudev, startup notification, desktop integration,
     and video thumbnail support enabled.
   * Add -fcommon build flag for compatibility with legacy global
     definitions under modern GCC.
 
- -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:41:07 +0000
+ -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:46:16 +0000
