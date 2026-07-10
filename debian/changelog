@@ -1,4 +1,4 @@
-spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
+spacefm (1.0.6+reaper3-1) UNRELEASED; urgency=medium
 
   * New maintained SpaceFM package based on upstream 1.0.6.
   * Include crash fix for unmounting volumes.
@@ -7,9 +7,10 @@ spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
   * Include GCC 10.1+ build fixes from upstream PR #772.
   * Include Btrfs clone ioctl support from upstream PR #640.
   * Build-depend on libbtrfs-dev so Btrfs clone support is enabled.
+  * Include dash-compatible configure fixes from upstream PR #813.
   * Build GTK2 interface with libudev, startup notification, desktop integration,
     and video thumbnail support enabled.
   * Add -fcommon build flag for compatibility with legacy global
     definitions under modern GCC.
 
- -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:23:07 +0000
+ -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:24:38 +0000
