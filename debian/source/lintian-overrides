@@ -1,0 +1,4 @@
+# SpaceFM upstream ships these HTML manual files as documentation/source form.
+# They are not embedded compressed/minified JavaScript or missing browser-source blobs.
+spacefm source: source-is-missing [data/spacefm-mansrc-en.html]
+spacefm source: source-is-missing [data/spacefm-manual-en.html]

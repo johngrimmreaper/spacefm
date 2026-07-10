@@ -1,0 +1,15 @@
+spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
+
+  * New maintained SpaceFM package based on upstream 1.0.6.
+  * Include crash fix for unmounting volumes.
+  * Include C23/compiler compatibility fixes.
+  * Include sys/sysmacros.h for major()/minor() declarations on modern Linux.
+  * Include GCC 10.1+ build fixes from upstream PR #772.
+  * Include Btrfs clone ioctl support from upstream PR #640.
+  * Build-depend on libbtrfs-dev so Btrfs clone support is enabled.
+  * Build GTK2 interface with libudev, startup notification, desktop integration,
+    and video thumbnail support enabled.
+  * Add -fcommon build flag for compatibility with legacy global
+    definitions under modern GCC.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:23:07 +0000
