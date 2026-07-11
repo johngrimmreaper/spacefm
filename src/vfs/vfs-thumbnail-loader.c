@@ -447,10 +447,18 @@ static GdkPixbuf* _vfs_thumbnail_load( const char* file_path, const char* uri,
                 atol( thumb_mtime ) != mtime )
     {
         if( thumbnail )
-            g_object_unref( thumbnail );
-        /* create new thumbnail */
-        if ( file_is_video == FALSE )
         {
+            g_object_unref( thumbnail );
+            thumbnail = NULL;
+        }
+
+        /* Images with extreme aspect ratios can make gdk resizing fail. */
+        if ( file_is_video == FALSE &&
+             ( w == h ||
+               ( w > h && (float)h / (float)w >= 0.02f ) ||
+               ( h > w && (float)w / (float)h >= 0.02f ) ) )
+        {
+            /* create new thumbnail */
             thumbnail = gdk_pixbuf_new_from_file_at_size( file_path,
                                             create_size, create_size, NULL );
             if ( thumbnail )
