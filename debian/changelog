@@ -1,3 +1,9 @@
+spacefm (1.0.6+reaper8-1) UNRELEASED; urgency=medium
+
+  * Include skinny-image thumbnail guard from upstream PR #350.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Sat, 11 Jul 2026 04:39:38 +0000
+
 spacefm (1.0.6+reaper7-1) UNRELEASED; urgency=medium
 
   * Update Korean translation from upstream PR #804.
