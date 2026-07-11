@@ -1,12 +1,8 @@
-spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
+spacefm (1.0.6+reaper7-1) UNRELEASED; urgency=medium
 
-  * Include Korean translation update from upstream PR #804.
-  * Include Russian translation update from upstream PR #741.
+  * Update Korean translation from upstream PR #804.
+  * Update Russian translation from upstream PR #741.
   * Include aft-mtp-mount support for MTP mounts from upstream PR #757.
-  * Include parent navigation on empty-area double-click from upstream PR #699.
-  * Include activation fix for selected items without focus from upstream PR #749.
-  * Include reviewed GCC 14 build fixes from upstream PR #816.
-  * Include dash-compatible configure fixes from upstream PR #813.
   * New maintained SpaceFM package based on upstream 1.0.6.
   * Include crash fix for unmounting volumes.
   * Include C23/compiler compatibility fixes.
@@ -14,9 +10,13 @@ spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
   * Include GCC 10.1+ build fixes from upstream PR #772.
   * Include Btrfs clone ioctl support from upstream PR #640.
   * Build-depend on libbtrfs-dev so Btrfs clone support is enabled.
+  * Include dash-compatible configure fixes from upstream PR #813.
+  * Include reviewed GCC 14 build fixes from upstream PR #816.
+  * Include activation fix for selected items without focus from upstream PR #749.
+  * Include parent navigation on empty-area double-click inspired by upstream PR #699.
   * Build GTK2 interface with libudev, startup notification, desktop integration,
     and video thumbnail support enabled.
   * Add -fcommon build flag for compatibility with legacy global
     definitions under modern GCC.
 
- -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:23:07 +0000
+ -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 10 Jul 2026 23:46:16 +0000
