@@ -1,5 +1,6 @@
 spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
 
+  * Include dash-compatible configure fixes from upstream PR #813.
   * New maintained SpaceFM package based on upstream 1.0.6.
   * Include crash fix for unmounting volumes.
   * Include C23/compiler compatibility fixes.
