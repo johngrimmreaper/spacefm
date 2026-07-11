@@ -1,5 +1,6 @@
 spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
 
+  * Include Korean translation update from upstream PR #804.
   * Include Russian translation update from upstream PR #741.
   * Include aft-mtp-mount support for MTP mounts from upstream PR #757.
   * Include parent navigation on empty-area double-click from upstream PR #699.
