@@ -1,5 +1,6 @@
 spacefm (1.0.6+reaper7-1) UNRELEASED; urgency=medium
 
+  * Update Korean translation from upstream PR #804.
   * Update Russian translation from upstream PR #741.
   * Include aft-mtp-mount support for MTP mounts from upstream PR #757.
   * New maintained SpaceFM package based on upstream 1.0.6.
