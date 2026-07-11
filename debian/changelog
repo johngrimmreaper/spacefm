@@ -1,5 +1,6 @@
 spacefm (1.0.6+reaper2-1) UNRELEASED; urgency=medium
 
+  * Include activation fix for selected items without focus from upstream PR #749.
   * Include reviewed GCC 14 build fixes from upstream PR #816.
   * Include dash-compatible configure fixes from upstream PR #813.
   * New maintained SpaceFM package based on upstream 1.0.6.
