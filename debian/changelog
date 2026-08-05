@@ -1,3 +1,18 @@
+spacefm (1.0.6+reaper8-1) UNRELEASED; urgency=medium
+
+  * Include the tree-view drag-motion fix from upstream PR #704.
+  * Drop the obsolete -fcommon build workaround after integrating the
+    GCC 10 global declaration fixes.
+  * Follow the current freedesktop.org thumbnail cache locations.
+  * Drop legacy GNOME2_DIR handling from autogen.sh.
+  * Add search keywords to the SpaceFM desktop entries.
+  * Correct the spelling of "occurred" across source files, manuals, and
+    gettext catalogs.
+  * Add Daniel Lopez's optional close-on-last-tab behavior for panels
+    and the application.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Wed, 05 Aug 2026 19:01:33 +0000
+
 spacefm (1.0.6+reaper7-1) UNRELEASED; urgency=medium
 
   * Update Korean translation from upstream PR #804.
