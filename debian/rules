@@ -8,3 +8,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		--with-gtk2
+
+override_dh_auto_install:
+	dh_auto_install
+	rm -f debian/spacefm/usr/bin/spacefm-installer
