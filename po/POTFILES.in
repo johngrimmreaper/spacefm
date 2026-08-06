@@ -21,7 +21,6 @@ src/ptk/ptk-file-browser.c
 src/ptk/ptk-location-view.c
 src/ptk/ptk-file-task.c
 src/ptk/ptk-file-archiver.c
-src/ptk/ptk-console-output.c
 src/ptk/ptk-dir-tree.c
 src/ptk/ptk-file-menu.c
 src/ptk/ptk-file-misc.c
