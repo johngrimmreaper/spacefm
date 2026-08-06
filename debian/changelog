@@ -1,3 +1,12 @@
+spacefm (1.0.6+reaper8-2) UNRELEASED; urgency=medium
+
+  * Do not ship the upstream spacefm-installer net installer in
+    Debian/Ubuntu binary packages.
+  * Keep spacefm-installer in the upstream source tree while excluding
+    it and its packaging-specific manual page from the binary package.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Thu, 06 Aug 2026 21:36:06 +0000
+
 spacefm (1.0.6+reaper8-1) UNRELEASED; urgency=medium
 
   * Include the tree-view drag-motion fix from upstream PR #704.
