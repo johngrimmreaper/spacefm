@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@BASH_PATH@
 # This script (spacefm-auth) is used internally by spacefm to authenticate
 # temporary scripts run as another user.  This file should not be modified
 # or run directly.
@@ -45,6 +45,6 @@ if [ "$($fm_sha "$fm_source")" != "$fm_sum  $fm_source" ]; then
 fi
 
 export fm_sum
-/bin/bash "$fm_source" run
+@BASH_PATH@ "$fm_source" run
 exit $?
 

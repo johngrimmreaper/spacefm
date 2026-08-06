@@ -31,11 +31,11 @@ AC_CHECK_LIB(X11, XClearWindow)
 AC_DEFINE(G_DISABLE_ASSERT, [1], [do not enable g_asserts])
 AC_DEFINE(G_LOG_DOMAIN, "SpaceFM")
 
-AC_ARG_WITH([bash-path], 
+AC_ARG_WITH([bash-path],
         AC_HELP_STRING([--with-bash-path=PATH], [Absolute path to GENUINE bash v4 - other shells lack features REQUIRED by SpaceFM (default: /bin/bash)]),
-        AC_DEFINE_UNQUOTED(BASHPATH, "$withval", [path to bash]),
-        AC_DEFINE_UNQUOTED(BASHPATH, "/bin/bash", [path to bash]))
-bash_path="$withval"
+        [bash_path="$withval"],
+        [bash_path=""])
+
 # IMPORTANT: For security reasons, an absolute path must be used for genuine
 # bash v4.  SpaceFM runs bash as root and you WILL open root exploits if you
 # disable this check, or run bash based on $PATH.
@@ -43,12 +43,13 @@ if test ! -z "$bash_path"; then
     if test "${bash_path%"${bash_path#?}"}" != "/"; then
         AC_MSG_ERROR([Fatal Error: Option --with-bash-path requires absolute path.])
     fi
-    echo "Modifying spacefm-auth to use bash path..."
-    bash_esc="$(printf %s "$bash_path" | sed "s|/|\\\/|g")"
-    sed "s/\(\/bin\/bash\)/$bash_esc/" src/spacefm-auth.bash > src/spacefm-auth
+    BASH_PATH="$bash_path"
 else
-    cp -pf src/spacefm-auth.bash src/spacefm-auth
+    BASH_PATH="/bin/bash"
 fi
+
+AC_DEFINE_UNQUOTED([BASHPATH], ["$BASH_PATH"], [path to bash])
+AC_SUBST([BASH_PATH])
 
 # gtk2 or gtk3
 PKG_PROG_PKG_CONFIG
@@ -310,6 +311,8 @@ AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE,"$GETTEXT_PACKAGE", [Gettext package.])
 dnl Add the languages which your application supports here.
 ALL_LINGUAS="af ar da ca cs de es et eu fa fi fr gl he hr hu id it ja ko lt ml ms nb nl nn pl ps pt pt_BR ru sk sl sv tr uk ur ur_PK vi zh_CN zh_TW"
 AM_GLIB_GNU_GETTEXT
+
+AC_CONFIG_FILES([src/spacefm-auth], [chmod +x src/spacefm-auth])
 
 AC_OUTPUT([
 Makefile

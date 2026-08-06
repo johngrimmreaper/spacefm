@@ -15,7 +15,9 @@ AM_CPPFLAGS = \
 
 bin_PROGRAMS = spacefm
 
-bin_SCRIPTS = spacefm-auth
+nodist_bin_SCRIPTS = spacefm-auth
+
+EXTRA_DIST = spacefm-auth.in
 
 MIMETYE_SOURCES = \
     mime-type/mime-type.c mime-type/mime-type.h \
