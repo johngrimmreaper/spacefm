@@ -4,8 +4,12 @@ spacefm (1.0.6+reaper8-2) UNRELEASED; urgency=medium
     Debian/Ubuntu binary packages.
   * Keep spacefm-installer in the upstream source tree while excluding
     it and its packaging-specific manual page from the binary package.
+  * Require libtoolize during bootstrap before running autogen.sh.
+  * Remove the unused console-output build implementation.
+  * Generate spacefm-auth from a configure template so --with-bash-path
+    works with out-of-tree builds without modifying the source tree.
 
- -- Reaper <JohnGrimmReaper@disroot.org>  Thu, 06 Aug 2026 21:36:06 +0000
+ -- Reaper <JohnGrimmReaper@disroot.org>  Thu, 06 Aug 2026 23:45:00 +0000
 
 spacefm (1.0.6+reaper8-1) UNRELEASED; urgency=medium
 
