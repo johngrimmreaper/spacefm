@@ -1,3 +1,31 @@
+1.0.7   2026-Aug-07:
+    add Btrfs clone/reflink support and use it by default where available
+        [Szilveszter Székely]
+    add clone_file support to VFS file tasks [Szilveszter Székely]
+    double-click in Icon/Compact views can navigate to parent directory
+        [Arun Chandrasekaran]
+    fix activating items when no item has focus [Joseph Lansdowne]
+    add aft-mtp-mount support for Android/MTP devices [Vladimir-csp]
+    add missing sys/sysmacros.h support for major/minor device helpers [Leo]
+    fix configure substitutions when using dash [orbea]
+    fix GCC 10 compilation issues [CartoonFan]
+    fix GCC 14 build issues [Brahmajit Das]
+    fix C23 compatibility [Nicolas PARLANT]
+    fix crash when unmounting volumes [yut23]
+    fix drag motion handling in the directory tree [BwackNinja]
+    use XDG-compliant thumbnail cache locations [Victor Ananjevsky]
+    optionally close panel/application when the last tab is closed [Daniel Lopez]
+    drop obsolete GNOME2_DIR bootstrap handling [Mateusz Łukasik]
+    add search keywords to desktop application entries [Mateusz Łukasik]
+    fix spelling in user-visible strings and translations [Mateusz Łukasik, Reaper]
+    update Russian translation [Vladimir-csp]
+    update Korean translation [yunlisa96]
+    correct Exo event-window handling for modern builds [Reaper]
+    require libtoolize during bootstrap [Reaper]
+    remove unused console-output implementation [Reaper]
+    generate spacefm-auth from configure template so --with-bash-path works
+        correctly with out-of-tree builds [Reaper]
+
 1.0.6   2018-Mar-04:
     Rename dlg canonicalize Copy Target/Link Target target when possible
     [installer] fix mktemp template and error handling for busybox #629
