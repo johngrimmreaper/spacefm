@@ -668,6 +668,7 @@ GTK_CFLAGS
 PKG_CONFIG_LIBDIR
 PKG_CONFIG_PATH
 PKG_CONFIG
+BASH_PATH
 LIBTOOL_EXPORT_OPTIONS
 DATADIRNAME
 ALL_LINGUAS
@@ -14135,20 +14136,11 @@ $as_echo "#define G_LOG_DOMAIN \"SpaceFM\"" >>confdefs.h
 
 # Check whether --with-bash-path was given.
 if test "${with_bash_path+set}" = set; then :
-  withval=$with_bash_path;
-cat >>confdefs.h <<_ACEOF
-#define BASHPATH "$withval"
-_ACEOF
-
+  withval=$with_bash_path; bash_path="$withval"
 else
-
-cat >>confdefs.h <<_ACEOF
-#define BASHPATH "/bin/bash"
-_ACEOF
-
+  bash_path=""
 fi
 
-bash_path="$withval"
 # IMPORTANT: For security reasons, an absolute path must be used for genuine
 # bash v4.  SpaceFM runs bash as root and you WILL open root exploits if you
 # disable this check, or run bash based on $PATH.
@@ -14156,12 +14148,15 @@ if test ! -z "$bash_path"; then
     if test "${bash_path%"${bash_path#?}"}" != "/"; then
         as_fn_error $? "Fatal Error: Option --with-bash-path requires absolute path." "$LINENO" 5
     fi
-    echo "Modifying spacefm-auth to use bash path..."
-    bash_esc="$(printf %s "$bash_path" | sed "s|/|\\\/|g")"
-    sed "s/\(\/bin\/bash\)/$bash_esc/" src/spacefm-auth.bash > src/spacefm-auth
+    BASH_PATH="$bash_path"
 else
-    cp -pf src/spacefm-auth.bash src/spacefm-auth
+    BASH_PATH="/bin/bash"
 fi
+
+cat >>confdefs.h <<_ACEOF
+#define BASHPATH "$BASH_PATH"
+_ACEOF
+
 
 # gtk2 or gtk3
 
@@ -16369,6 +16364,8 @@ $as_echo "$LINGUAS" >&6; }
 	< $srcdir/po/POTFILES.in > po/POTFILES
 
 
+ac_config_files="$ac_config_files src/spacefm-auth"
+
 ac_config_files="$ac_config_files Makefile etc/Makefile src/Makefile po/Makefile.in data/Makefile"
 
 cat >confcache <<\_ACEOF
@@ -17420,6 +17417,7 @@ do
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "default-1") CONFIG_COMMANDS="$CONFIG_COMMANDS default-1" ;;
+    "src/spacefm-auth") CONFIG_FILES="$CONFIG_FILES src/spacefm-auth" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
@@ -18581,6 +18579,7 @@ fi
     "default-1":C) case "$CONFIG_FILES" in *po/Makefile.in*)
         sed -e "/POTFILES =/r po/POTFILES" po/Makefile.in > po/Makefile
       esac ;;
+    "src/spacefm-auth":F) chmod +x src/spacefm-auth ;;
     "po/stamp-it":C)
     if  ! grep "^# INTLTOOL_MAKEFILE$" "po/Makefile.in" > /dev/null ; then
        as_fn_error $? "po/Makefile.in.in was not created by intltoolize." "$LINENO" 5
