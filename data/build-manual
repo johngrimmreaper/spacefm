@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# Bash 5.2+ enables patsub_replacement by default, which gives '&' special
+# meaning in ${parameter/pattern/replacement}.  The manual footer replacement
+# contains HTML entities such as &nbsp;, so retain the historical behavior.
+shopt -u patsub_replacement 2>/dev/null || true
+
 # spacefm build manual
 # run from data/ subdir
 # run as: ./build-manual > spacefm-manual-en.html
