@@ -1,5 +1,13 @@
 spacefm (1.0.7-1) UNRELEASED; urgency=medium
 
+  * New upstream maintained release 1.0.7.
+  * Transition from the 1.0.6+reaper snapshot series to the formal 1.0.7
+    release.
+
+ -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 07 Aug 2026 02:41:40 +0000
+
+spacefm (1.0.6+reaper9-1) UNRELEASED; urgency=medium
+
   * Do not ship the upstream spacefm-installer net installer in
     Debian/Ubuntu binary packages.
   * Keep spacefm-installer in the upstream source tree while excluding
@@ -8,11 +16,8 @@ spacefm (1.0.7-1) UNRELEASED; urgency=medium
   * Remove the unused console-output build implementation.
   * Generate spacefm-auth from a configure template so --with-bash-path
     works with out-of-tree builds without modifying the source tree.
-  * New upstream maintained release 1.0.7.
-  * Transition from the 1.0.6+reaper snapshot series to the formal 1.0.7
-    release.
 
- -- Reaper <JohnGrimmReaper@disroot.org>  Fri, 07 Aug 2026 02:41:40 +0000
+ -- Reaper <JohnGrimmReaper@disroot.org>  Thu, 06 Aug 2026 23:54:47 +0000
 
 spacefm (1.0.6+reaper8-1) UNRELEASED; urgency=medium
 
