@@ -17,7 +17,9 @@ bin_PROGRAMS = spacefm
 
 nodist_bin_SCRIPTS = spacefm-auth
 
-EXTRA_DIST = spacefm-auth.in
+EXTRA_DIST = \
+    spacefm-auth.in \
+    gtk2-compat.h
 
 MIMETYE_SOURCES = \
     mime-type/mime-type.c mime-type/mime-type.h \
