@@ -102,31 +102,22 @@ htmldir = @htmldir@
 dist_html_DATA = spacefm-manual-en.html
 
 # GtkBuilder UI definition files
-ui_in_files= \
-	ui/prefdlg.glade \
-	ui/prefdlg2.glade \
-	ui/appchooserdlg.glade \
-	ui/file_properties.glade \
-	ui/about-dlg.glade \
-	ui/find-files.glade \
-	ui/find-files2.glade \
-	ui/godlg.glade
-ui_DATA = $(ui_in_files:.glade=.ui)
+dist_ui_DATA = \
+	ui/prefdlg.ui \
+	ui/prefdlg2.ui \
+	ui/appchooserdlg.ui \
+	ui/file_properties.ui \
+	ui/about-dlg.ui \
+	ui/find-files.ui \
+	ui/find-files2.ui \
+	ui/godlg.ui
 
 EXTRA_DIST = \
 	$(dt_in_files) \
 	$(DIST_ICON_FILES) \
-	mount.rules \
-	$(ui_DATA)
+	mount.rules
 	
 CLEANFILES = spacefm.desktop \
 		 spacefm-find.desktop \
 		 spacefm-folder-handler.desktop
-
-# Generate GtkBuilder UI files from Glade files
-# was with GNU extension: %.ui: %.glade
-.glade.ui:
-#	$(GTK_BUILDER_CONVERT) $< $@
-	$(top_srcdir)/gtk-builder-convert $< $@
-#	$(top_builddir)/src/xml-purge $@
 
