@@ -114,7 +114,7 @@ ui_in_files= \
 ui_DATA = $(ui_in_files:.glade=.ui)
 
 EXTRA_DIST = \
-	$(desktop_DATA) \
+	$(dt_in_files) \
 	$(DIST_ICON_FILES) \
 	mount.rules \
 	$(ui_DATA)
