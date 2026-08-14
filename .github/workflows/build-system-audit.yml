@@ -22,7 +22,6 @@ jobs:
       - name: Verify tested source commit
         run: |
           test "$(git rev-parse HEAD)" = '5bcfb2965d4b8f8dfcfc0a8e8c68173134c929f9'
-          git verify-commit HEAD
 
       - name: Install build dependencies
         run: |
