@@ -1,0 +1,43 @@
+name: Same-inode regression
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev xvfb xdotool
+
+      - name: Apply candidate fix
+        run: git apply .github/audit/same-inode.patch
+
+      - name: Build
+        run: |
+          ./autogen.sh --with-gtk2
+          make -j"$(nproc)"
+
+      - name: Run regression test
+        run: bash .github/audit/test-same-inode.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: same-inode-regression-logs
+          path: /tmp/*same-inode*.log
+          if-no-files-found: warn
