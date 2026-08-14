@@ -5,7 +5,7 @@ SUBDIRS = etc src data po
 mimedir = $(datadir)/mime/packages
 mime_DATA = src/mime-type/spacefm-mime.xml
 
-bin_SCRIPTS = spacefm-installer
+dist_bin_SCRIPTS = spacefm-installer
 
 EXTRA_DIST = \
 	autogen.sh \
