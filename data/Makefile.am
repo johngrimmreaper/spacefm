@@ -116,7 +116,7 @@ ui_DATA = $(ui_in_files:.glade=.ui)
 EXTRA_DIST = \
 	$(desktop_DATA) \
 	$(DIST_ICON_FILES) \
-	$(file_DATA) \
+	mount.rules \
 	$(ui_DATA)
 	
 CLEANFILES = spacefm.desktop \
