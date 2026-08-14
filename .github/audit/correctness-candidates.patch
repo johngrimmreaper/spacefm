@@ -1,0 +1,131 @@
+diff --git a/src/desktop/desktop.c b/src/desktop/desktop.c
+index 29a1be3..fb88f2c 100644
+--- a/src/desktop/desktop.c
++++ b/src/desktop/desktop.c
+@@ -162,7 +162,8 @@ void fm_desktop_update_wallpaper( gboolean transparency_changed )
+     if( transparency_changed )
+     {
+         fm_turn_off_desktop_icons();
+-        fm_turn_on_desktop_icons( type == DW_BG_TRANSPARENT );
++        fm_turn_on_desktop_icons( app_settings.show_wallpaper == 1 &&
++                            app_settings.wallpaper_mode == WPM_TRANSPARENT );
+         return;
+     }
+ 
+diff --git a/src/vfs/vfs-file-task.c b/src/vfs/vfs-file-task.c
+index f65cd6b..3051cfe 100644
+--- a/src/vfs/vfs-file-task.c
++++ b/src/vfs/vfs-file-task.c
+@@ -1444,7 +1444,7 @@ char* get_sha256sum( char* path )
+     }
+     
+     char* stdout;
+-    char* sum;
++    char* sum = NULL;
+     char* cmd = g_strdup_printf( "%s %s", sha256sum, path );
+     if ( g_spawn_command_line_sync( cmd, &stdout, NULL, NULL, NULL ) )
+     {
+diff --git a/src/ptk/ptk-file-task.c b/src/ptk/ptk-file-task.c
+index afd7068..5635f0f 100644
+--- a/src/ptk/ptk-file-task.c
++++ b/src/ptk/ptk-file-task.c
+@@ -1547,7 +1547,7 @@ void ptk_file_task_update( PtkFileTask* ptask )
+     }
+ 
+     VFSFileTask* task = ptask->task;
+-    off64_t cur_speed;
++    off64_t cur_speed = 0;
+     gdouble timer_elapsed = g_timer_elapsed( task->timer, NULL );
+     
+     if ( task->type == VFS_FILE_TASK_EXEC )
+diff --git a/src/pref-dialog.c b/src/pref-dialog.c
+index a4be1be..2f3df04 100644
+--- a/src/pref-dialog.c
++++ b/src/pref-dialog.c
+@@ -217,7 +217,7 @@ static void on_response( GtkDialog* dlg, int response, FMPrefDlg* user_data )
+     gboolean show_thumbnail;
+     int big_icon;
+     int small_icon;
+-    int tool_icon;
++    int tool_icon = app_settings.tool_icon_size;
+     //gboolean show_desktop;
+     gboolean show_wallpaper;
+     gboolean single_click;
+@@ -227,7 +227,7 @@ static void on_response( GtkDialog* dlg, int response, FMPrefDlg* user_data )
+     gboolean root_set_change = FALSE;
+     WallpaperMode wallpaper_mode;
+     GdkColor bg1;
+-    GdkColor bg2;
++    GdkColor bg2 = app_settings.desktop_bg2;
+     GdkColor text;
+     GdkColor shadow;
+     char* wallpaper;
+diff --git a/src/ptk/ptk-handler.c b/src/ptk/ptk-handler.c
+index 2c90821..749f14f 100644
+--- a/src/ptk/ptk-handler.c
++++ b/src/ptk/ptk-handler.c
+@@ -697,7 +697,6 @@ char* ptk_handler_load_script( int mode, int cmd, XSet* handler_set,
+             {
+                 if ( !g_utf8_validate( line, -1, NULL ) )
+                 {
+-                    fclose( file );
+                     if ( view )
+                         gtk_text_buffer_set_text( buf, "", -1 );
+                     else
+@@ -722,7 +721,11 @@ char* ptk_handler_load_script( int mode, int cmd, XSet* handler_set,
+                     g_string_append( gstr, line );
+             }
+             if ( fclose( file ) != 0 )
++            {
++                file = NULL;
+                 goto _read_error;
++            }
++            file = NULL;
+         }
+         else
+             goto _read_error;
+@@ -810,7 +813,11 @@ char* ptk_handler_save_script( int mode, int cmd, XSet* handler_set,
+         if ( !g_str_has_suffix( text, "\n" ) && fputs( "\n", file ) < 0 )
+             goto _write_error;
+         if ( fclose( file ) != 0 )
++        {
++            file = NULL;
+             goto _write_error;
++        }
++        file = NULL;
+         // This script isn't run directly so no need to make executable
+         //if ( chmod( script, S_IRUSR | S_IWUSR | S_IXUSR ) != 0 )
+         //    goto _write_error;
+diff --git a/src/item-prop.c b/src/item-prop.c
+index 50fd01d..168372a 100644
+--- a/src/item-prop.c
++++ b/src/item-prop.c
+@@ -805,7 +805,6 @@ void load_command_script( ContextData* ctxt, XSet* set )
+             {
+                 if ( !g_utf8_validate( line, -1, NULL ) )
+                 {
+-                    fclose( file );
+                     gtk_text_buffer_set_text( buf, "", -1 );
+                     modified = TRUE;
+                     g_warning( _("file '%s' contents are not valid UTF-8"),
+diff --git a/src/cust-dialog.c b/src/cust-dialog.c
+index 59b88d2..c2c70a7 100644
+--- a/src/cust-dialog.c
++++ b/src/cust-dialog.c
+@@ -1656,7 +1656,15 @@ static char* read_file_value( const char* path, gboolean multi )
+             return NULL;
+         }
+         bytes = read( f, line, sizeof( line ) - 1 );
+-        close(f);
++        if ( bytes < 0 )
++        {
++            int err = errno;
++            close( f );
++            dlg_warn( _("error reading file %s: %s"), path,
++                                                        g_strerror( err ) );
++            return NULL;
++        }
++        close( f );
+         line[bytes] = '\0';
+     }
+     else
