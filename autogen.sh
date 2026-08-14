@@ -143,8 +143,14 @@ done
 
 conf_flags="--enable-maintainer-mode"
 
-# ensure pot file is not deleted by make clean
-sed -i 's/\(.*rm -f.*\)\$(GETTEXT_PACKAGE)\.pot \(.*\)/\1 \2/' po/Makefile.in.in 
+# Keep the tracked POT across ordinary clean, but remove generated translation
+# residue from out-of-tree builds during distclean.
+sed -i \
+  -e 's/\(.*rm -f.*\)\$(GETTEXT_PACKAGE)\.pot \(.*\)/\1 \2/' \
+  -e '/^distclean: clean$/a\
+\tif test "$(srcdir)" != "."; then rm -f $(GETTEXT_PACKAGE).pot; fi\
+\trm -f .intltool-merge-cache.lock' \
+  po/Makefile.in.in
 
 if test x$NOCONFIGURE = x; then
   echo Running $srcdir/configure $conf_flags "$@" ...
