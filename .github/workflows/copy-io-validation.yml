@@ -1,0 +1,292 @@
+name: Copy I/O validation
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  copy-io:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install build and test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev \
+            xauth xvfb
+
+      - name: Apply candidate copy I/O fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/vfs/vfs-file-task.c')
+          text = path.read_text()
+          old = '''                    while ( ( rsize = read( rfd, buffer, sizeof( buffer ) ) ) > 0 )
+                    {
+                        if ( should_abort( task ) )
+                        {
+                            copy_fail = TRUE;
+                            break;
+                        }
+
+                        if ( write( wfd, buffer, rsize ) > 0 )
+                        {
+                            g_mutex_lock( task->mutex );
+                            task->progress += rsize;
+                            g_mutex_unlock( task->mutex );
+                        }
+                        else
+                        {
+                            vfs_file_task_error( task, errno, _("Writing"), dest_file );
+                            copy_fail = TRUE;
+                            break;
+                        }
+                    }
+'''
+          new = '''                    while ( 1 )
+                    {
+                        rsize = read( rfd, buffer, sizeof( buffer ) );
+                        if ( rsize == 0 )
+                            break;
+                        if ( rsize < 0 )
+                        {
+                            if ( errno == EINTR )
+                                continue;
+                            vfs_file_task_error( task, errno, _("Reading"), src_file );
+                            copy_fail = TRUE;
+                            break;
+                        }
+
+                        ssize_t written = 0;
+                        while ( written < rsize )
+                        {
+                            ssize_t wsize;
+
+                            if ( should_abort( task ) )
+                            {
+                                copy_fail = TRUE;
+                                break;
+                            }
+
+                            wsize = write( wfd, buffer + written, rsize - written );
+                            if ( wsize < 0 )
+                            {
+                                if ( errno == EINTR )
+                                    continue;
+                                vfs_file_task_error( task, errno, _("Writing"), dest_file );
+                                copy_fail = TRUE;
+                                break;
+                            }
+                            if ( wsize == 0 )
+                            {
+                                errno = EIO;
+                                vfs_file_task_error( task, errno, _("Writing"), dest_file );
+                                copy_fail = TRUE;
+                                break;
+                            }
+
+                            written += wsize;
+                            g_mutex_lock( task->mutex );
+                            task->progress += wsize;
+                            g_mutex_unlock( task->mutex );
+                        }
+                        if ( copy_fail )
+                            break;
+                    }
+'''
+          if text.count(old) != 1:
+              raise SystemExit('expected copy loop not found exactly once')
+          path.write_text(text.replace(old, new))
+          PY
+          git diff --check
+          git diff -- src/vfs/vfs-file-task.c
+
+      - name: Build SpaceFM GTK2
+        run: |
+          ./autogen.sh --with-gtk2
+          make -j"$(nproc)"
+
+      - name: Build I/O fault injector
+        shell: bash
+        run: |
+          cat > /tmp/spacefm-iofault.c <<'EOF'
+          #define _GNU_SOURCE
+          #include <dlfcn.h>
+          #include <errno.h>
+          #include <limits.h>
+          #include <stdio.h>
+          #include <stdlib.h>
+          #include <string.h>
+          #include <unistd.h>
+
+          static int fd_matches(int fd, const char *env_name)
+          {
+              const char *target = getenv(env_name);
+              char proc[64];
+              char path[PATH_MAX + 1];
+              ssize_t n;
+
+              if (!target || !*target)
+                  return 0;
+              snprintf(proc, sizeof(proc), "/proc/self/fd/%d", fd);
+              n = readlink(proc, path, PATH_MAX);
+              if (n < 0)
+                  return 0;
+              path[n] = '\0';
+              return strcmp(path, target) == 0;
+          }
+
+          ssize_t write(int fd, const void *buf, size_t count)
+          {
+              static ssize_t (*real_write)(int, const void *, size_t);
+              if (!real_write)
+                  real_write = dlsym(RTLD_NEXT, "write");
+              if (fd_matches(fd, "SPACEFM_SHORT_WRITE_TARGET") && count > 1)
+                  count = count / 2;
+              return real_write(fd, buf, count);
+          }
+
+          ssize_t read(int fd, void *buf, size_t count)
+          {
+              static ssize_t (*real_read)(int, void *, size_t);
+              static off_t injected_after = -1;
+              off_t pos;
+              const char *value;
+
+              if (!real_read)
+                  real_read = dlsym(RTLD_NEXT, "read");
+
+              if (fd_matches(fd, "SPACEFM_READ_ERROR_SOURCE"))
+              {
+                  if (injected_after < 0)
+                  {
+                      value = getenv("SPACEFM_READ_ERROR_AFTER");
+                      injected_after = value ? strtoll(value, NULL, 10) : 8192;
+                  }
+                  pos = lseek(fd, 0, SEEK_CUR);
+                  if (pos >= injected_after)
+                  {
+                      errno = EIO;
+                      return -1;
+                  }
+              }
+              return real_read(fd, buf, count);
+          }
+          EOF
+          gcc -shared -fPIC -Wall -Wextra -O2 \
+            -o /tmp/libspacefm-iofault.so /tmp/spacefm-iofault.c -ldl
+
+      - name: Test partial writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 >/tmp/xvfb.log 2>&1 &
+          xvfb_pid=$!
+          trap 'kill "$xvfb_pid" 2>/dev/null || true; pkill -x spacefm 2>/dev/null || true' EXIT
+
+          src_dir=/tmp/spacefm-copy-src
+          dest_dir=/dev/shm/spacefm-copy-dest
+          src="$src_dir/blob.bin"
+          dest="$dest_dir/blob.bin"
+          rm -rf "$src_dir" "$dest_dir"
+          mkdir -p "$src_dir" "$dest_dir"
+          dd if=/dev/urandom of="$src" bs=1M count=4 status=none
+
+          env \
+            LD_PRELOAD=/tmp/libspacefm-iofault.so \
+            SPACEFM_SHORT_WRITE_TARGET="$dest" \
+            ./src/spacefm "$src_dir" >/tmp/spacefm-short-write.log 2>&1 &
+          server_pid=$!
+
+          ready=0
+          for i in $(seq 1 50); do
+            if ./src/spacefm -s get window_size >/tmp/socket-ready.log 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+
+          ./src/spacefm -s run-task copy "$src" "$dest_dir"
+
+          src_size=$(stat -c %s "$src")
+          for i in $(seq 1 100); do
+            if test -f "$dest" && test "$(stat -c %s "$dest")" -eq "$src_size"; then
+              break
+            fi
+            sleep 0.1
+          done
+
+          test "$(stat -c %s "$dest")" -eq "$src_size"
+          cmp "$src" "$dest"
+
+          kill "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
+          pkill -x spacefm 2>/dev/null || true
+
+      - name: Test read errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DISPLAY=:99
+          src_dir=/tmp/spacefm-read-src
+          dest_dir=/dev/shm/spacefm-read-dest
+          src="$src_dir/blob.bin"
+          dest="$dest_dir/blob.bin"
+          rm -rf "$src_dir" "$dest_dir"
+          mkdir -p "$src_dir" "$dest_dir"
+          dd if=/dev/urandom of="$src" bs=1M count=4 status=none
+
+          env \
+            LD_PRELOAD=/tmp/libspacefm-iofault.so \
+            SPACEFM_READ_ERROR_SOURCE="$src" \
+            SPACEFM_READ_ERROR_AFTER=8192 \
+            ./src/spacefm "$src_dir" >/tmp/spacefm-read-error.log 2>&1 &
+          server_pid=$!
+
+          ready=0
+          for i in $(seq 1 50); do
+            if ./src/spacefm -s get window_size >/tmp/socket-ready-2.log 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+
+          ./src/spacefm -s run-task copy "$src" "$dest_dir"
+          sleep 2
+
+          # A failed copy must not be left behind, and the source must survive.
+          test -f "$src"
+          test ! -e "$dest"
+
+          kill "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
+          pkill -x spacefm 2>/dev/null || true
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: copy-io-validation
+          path: |
+            /tmp/spacefm-*.log
+            /tmp/socket-ready*.log
+            /tmp/xvfb.log
+          if-no-files-found: warn
