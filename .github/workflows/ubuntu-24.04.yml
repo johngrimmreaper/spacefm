@@ -1,0 +1,252 @@
+name: Ubuntu 24.04 CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubuntu-24.04-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  source-build:
+    name: source / ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gtk2-default
+            flags: --with-gtk2
+          - name: gtk3-default
+            flags: --with-gtk3
+          - name: gtk2-pixmaps
+            flags: --with-gtk2 --enable-pixmaps
+          - name: gtk2-no-desktop
+            flags: --with-gtk2 --disable-desktop-integration
+          - name: gtk2-no-video
+            flags: --with-gtk2 --disable-video-thumbnails
+          - name: gtk2-no-startup
+            flags: --with-gtk2 --disable-startup-notification
+          - name: gtk2-minimal-features
+            flags: --with-gtk2 --disable-desktop-integration --disable-video-thumbnails --disable-startup-notification --disable-btrfs-clone
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install source-build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            autoconf \
+            automake \
+            gettext \
+            intltool \
+            libtool \
+            pkg-config \
+            libbtrfs-dev \
+            libffmpegthumbnailer-dev \
+            libglib2.0-dev \
+            libgtk2.0-dev \
+            libgtk-3-dev \
+            libstartup-notification0-dev \
+            libudev-dev \
+            libx11-dev
+
+      - name: Record environment
+        run: |
+          mkdir -p ci-logs
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "runner=${{ runner.os }}"
+            echo "configuration=${{ matrix.name }}"
+            echo "flags=${{ matrix.flags }}"
+            lsb_release -ds
+            gcc --version | head -1
+            autoconf --version | head -1
+            automake --version | head -1
+            libtoolize --version | head -1
+            intltoolize --version | head -1
+          } | tee ci-logs/environment.log
+
+      - name: Run source lifecycle
+        shell: bash
+        run: |
+          set +e
+          mkdir -p ci-logs
+          : > ci-logs/results.tsv
+          overall=0
+          flags='${{ matrix.flags }}'
+          destdir="$RUNNER_TEMP/spacefm-install-root"
+
+          run_target() {
+            name="$1"
+            shift
+            echo "===== $name ====="
+            ( set -o pipefail; "$@" 2>&1 | tee "ci-logs/${name}.log" )
+            rc=${PIPESTATUS[0]}
+            printf '%s\t%s\n' "$name" "$rc" | tee -a ci-logs/results.tsv
+            if test "$rc" -ne 0; then
+              overall=1
+            fi
+            return 0
+          }
+
+          # Word splitting is intentional: matrix flags are controlled above.
+          run_target autogen ./autogen.sh $flags
+
+          git diff -- \
+            Makefile.in \
+            src/Makefile.in \
+            data/Makefile.in \
+            etc/Makefile.in \
+            po/Makefile.in.in \
+            configure \
+            configure.ac \
+            aclocal.m4 \
+            > ci-logs/generated-files.diff
+
+          run_target make make -j"$(nproc)"
+          run_target check make check
+          run_target dist make dist
+
+          rm -rf "$destdir"
+          mkdir -p "$destdir"
+          run_target install make install DESTDIR="$destdir"
+          run_target uninstall make uninstall DESTDIR="$destdir"
+
+          find "$destdir" -mindepth 1 -print | sort \
+            > ci-logs/uninstall-leftovers.log
+          if find "$destdir" -mindepth 1 ! -type d -print -quit | grep -q .; then
+            echo 'Non-directory files remain after make uninstall:' >&2
+            cat ci-logs/uninstall-leftovers.log >&2
+            overall=1
+          fi
+
+          run_target distclean make distclean
+          run_target reconfigure ./configure $flags
+          run_target distcheck make distcheck DISTCHECK_CONFIGURE_FLAGS="$flags"
+
+          echo '===== target results ====='
+          column -t -s $'\t' ci-logs/results.tsv || cat ci-logs/results.tsv
+
+          exit "$overall"
+
+      - name: Upload source-build logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ubuntu-24.04-source-${{ matrix.name }}
+          path: ci-logs/
+          if-no-files-found: error
+
+  debian-package:
+    name: Debian package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare package logging
+        run: mkdir -p ci-logs package-artifacts
+
+      - name: Install packaging tools
+        shell: bash
+        run: |
+          set -o pipefail
+          sudo apt-get update 2>&1 | tee ci-logs/apt-update.log
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            devscripts \
+            equivs \
+            lintian \
+            xauth \
+            xvfb 2>&1 | tee ci-logs/packaging-tools.log
+
+      - name: Install package build dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          mk-build-deps \
+            --install \
+            --remove \
+            --root-cmd=sudo \
+            --tool='apt-get -y --no-install-recommends' \
+            debian/control 2>&1 | tee ci-logs/mk-build-deps.log
+
+      - name: Build binary package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "source=$(dpkg-parsechangelog -SSource)"
+            echo "version=$(dpkg-parsechangelog -SVersion)"
+            echo "distribution=$(dpkg-parsechangelog -SDistribution)"
+            echo "architecture=$(dpkg --print-architecture)"
+            lsb_release -ds
+            dpkg-buildpackage --version | head -1
+          } | tee ci-logs/package-environment.log
+
+          dpkg-buildpackage -us -uc -b 2>&1 \
+            | tee ci-logs/dpkg-buildpackage.log
+
+          find .. -maxdepth 1 -type f \
+            \( -name 'spacefm_*.deb' \
+               -o -name 'spacefm-dbgsym_*.ddeb' \
+               -o -name 'spacefm_*.changes' \
+               -o -name 'spacefm_*.buildinfo' \) \
+            -print \
+            -exec cp -v {} package-artifacts/ \;
+
+          test -n "$(find package-artifacts -maxdepth 1 -name 'spacefm_*.deb' -print -quit)"
+          test -n "$(find package-artifacts -maxdepth 1 -name 'spacefm_*.changes' -print -quit)"
+
+      - name: Lint Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          changes="$(find package-artifacts -maxdepth 1 -name 'spacefm_*.changes' -print -quit)"
+          test -n "$changes"
+          lintian --fail-on error "$changes" 2>&1 | tee ci-logs/lintian.log
+
+      - name: Install and smoke-test package
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb="$(find package-artifacts -maxdepth 1 -name 'spacefm_[0-9]*_*.deb' -print -quit)"
+          test -n "$deb"
+
+          sudo apt-get install -y "$PWD/$deb" 2>&1 \
+            | tee ci-logs/package-install.log
+          dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' spacefm \
+            | tee ci-logs/installed-package.log
+          xvfb-run -a spacefm --version \
+            | tee ci-logs/spacefm-version.log
+
+      - name: Upload Debian package artifacts
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ubuntu-24.04-debian-package
+          path: |
+            package-artifacts/
+            ci-logs/
+          if-no-files-found: error
