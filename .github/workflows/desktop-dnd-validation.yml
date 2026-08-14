@@ -1,0 +1,53 @@
+name: Desktop DnD regression
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev
+
+      - name: Apply candidate fix
+        run: git apply .github/audit/desktop-dnd.patch
+
+      - name: Build SpaceFM
+        run: |
+          CFLAGS='-O2 -Wall -Wextra -Wformat=2 -Wstringop-overread' \
+            ./autogen.sh --with-gtk2
+          make -j"$(nproc)" 2>&1 | tee /tmp/spacefm-dnd-build.log
+          if grep -E 'desktop-window\.c:.*(stringop-overread|null pointer|array-bounds)' /tmp/spacefm-dnd-build.log; then
+            echo 'desktop DnD warning remains' >&2
+            exit 1
+          fi
+
+      - name: Test URI list compaction
+        run: |
+          gcc -O2 -Wall -Wextra -Werror \
+            .github/audit/test-uri-list.c \
+            $(pkg-config --cflags --libs glib-2.0) \
+            -o /tmp/test-uri-list
+          /tmp/test-uri-list
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: desktop-dnd-regression-log
+          path: /tmp/spacefm-dnd-build.log
+          if-no-files-found: warn
