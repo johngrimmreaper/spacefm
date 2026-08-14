@@ -9,6 +9,31 @@ DISTCLEANFILES = spacefm.desktop \
 			spacefm-find.desktop \
 			spacefm-folder-handler.desktop
 
+DIST_ICON_FILES = \
+			spacefm.png \
+			spacefm-root.png \
+			spacefm-find.png \
+			spacefm-48-cube-blue.png \
+			spacefm-48-cube-green.png \
+			spacefm-48-cube-red.png \
+			spacefm-48-faenza-blue.png \
+			spacefm-48-faenza-find.png \
+			spacefm-48-faenza-red.png \
+			spacefm-48-folder-blue.png \
+			spacefm-48-folder-red.png \
+			spacefm-48-pyramid-blue.png \
+			spacefm-48-pyramid-green.png \
+			spacefm-48-pyramid-red.png \
+			spacefm-128-cube-blue.png \
+			spacefm-128-cube-green.png \
+			spacefm-128-cube-red.png \
+			spacefm-128-pyramid-blue.png \
+			spacefm-128-pyramid-green.png \
+			spacefm-128-pyramid-red.png \
+			faenza/spacefm.png \
+			faenza/spacefm-root.png \
+			faenza/spacefm-find.png
+
 if NO_PIXMAPS
 icon48dir = $(datadir)/icons/hicolor/48x48/apps
 icon48_DATA = \
@@ -90,7 +115,7 @@ ui_DATA = $(ui_in_files:.glade=.ui)
 
 EXTRA_DIST = \
 	$(desktop_DATA) \
-	$(icon_DATA) \
+	$(DIST_ICON_FILES) \
 	$(file_DATA) \
 	$(ui_DATA)
 	
