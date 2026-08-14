@@ -1,0 +1,202 @@
+name: Full polish audit
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install analysis tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libgtk-3-dev libstartup-notification0-dev libudev-dev libx11-dev \
+            cppcheck clang shellcheck desktop-file-utils libxml2-utils
+
+      - name: Prepare logs
+        run: mkdir -p audit-logs
+
+      - name: Cppcheck
+        shell: bash
+        run: |
+          set +e
+          cppcheck \
+            --enable=warning,style,performance,portability \
+            --force \
+            --std=c99 \
+            --language=c \
+            --suppress=missingIncludeSystem \
+            --template='{file}:{line}:{column}: {severity}: {message} [{id}]' \
+            src 2>audit-logs/cppcheck.log
+          echo $? > audit-logs/cppcheck.status
+          cat audit-logs/cppcheck.log
+          exit 0
+
+      - name: GCC analyzer build
+        shell: bash
+        run: |
+          set +e
+          ./autogen.sh --with-gtk2 \
+            CFLAGS='-O0 -g -fanalyzer -Wall -Wextra -Wformat=2' \
+            >audit-logs/analyzer-configure.log 2>&1
+          cfg=$?
+          if test "$cfg" -eq 0; then
+            make -j1 >audit-logs/gcc-analyzer.log 2>&1
+            rc=$?
+          else
+            rc=$cfg
+          fi
+          echo "$rc" > audit-logs/gcc-analyzer.status
+          grep -nE 'warning:|error:' audit-logs/gcc-analyzer.log 2>/dev/null \
+            > audit-logs/gcc-analyzer-diagnostics.log || true
+          cat audit-logs/gcc-analyzer-diagnostics.log
+          exit 0
+
+      - name: ShellCheck
+        shell: bash
+        run: |
+          set +e
+          : > audit-logs/shellcheck.log
+          find . -type f \( -name '*.sh' -o -path './spacefm-installer' -o -path './data/build-manual' \) -print0 \
+            | xargs -0 -r shellcheck -x >>audit-logs/shellcheck.log 2>&1
+          echo $? > audit-logs/shellcheck.status
+          cat audit-logs/shellcheck.log
+          exit 0
+
+      - name: Desktop and XML validation
+        shell: bash
+        run: |
+          set +e
+          : > audit-logs/desktop-validation.log
+          for f in data/*.desktop.in; do
+            test -f "$f" || continue
+            sed 's/^_\([A-Za-z].*=\)/\1/' "$f" > /tmp/spacefm-audit.desktop
+            desktop-file-validate /tmp/spacefm-audit.desktop >>audit-logs/desktop-validation.log 2>&1
+          done
+          : > audit-logs/xml-validation.log
+          for f in data/*.xml src/ui/*.ui; do
+            test -f "$f" || continue
+            xmllint --noout "$f" >>audit-logs/xml-validation.log 2>&1 || true
+          done
+          cat audit-logs/desktop-validation.log
+          cat audit-logs/xml-validation.log
+          exit 0
+
+      - name: Upload static audit
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: full-polish-static-audit
+          path: audit-logs/
+          if-no-files-found: error
+
+  package-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install packaging and audit tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential devscripts equivs lintian \
+            desktop-file-utils libxml2-utils binutils
+
+      - name: Install package build dependencies
+        run: |
+          mk-build-deps \
+            --install \
+            --remove \
+            --root-cmd=sudo \
+            --tool='apt-get -y --no-install-recommends' \
+            debian/control
+
+      - name: Build package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p audit-logs package-artifacts extracted
+          dpkg-buildpackage -us -uc -b 2>&1 | tee audit-logs/dpkg-buildpackage.log
+          find .. -maxdepth 1 -type f \
+            \( -name 'spacefm_*.deb' \
+               -o -name 'spacefm-dbgsym_*.ddeb' \
+               -o -name 'spacefm_*.changes' \
+               -o -name 'spacefm_*.buildinfo' \) \
+            -exec cp -v {} package-artifacts/ \;
+
+      - name: Exhaustive Lintian report
+        shell: bash
+        run: |
+          set +e
+          lintian --version | tee audit-logs/lintian-version.log
+          lintian --help > audit-logs/lintian-help.log 2>&1 || true
+          changes="$(find package-artifacts -maxdepth 1 -name 'spacefm_*.changes' -print -quit)"
+          lintian -I -E --pedantic --show-overrides "$changes" \
+            >audit-logs/lintian-full.log 2>&1
+          echo $? > audit-logs/lintian-full.status
+          cat audit-logs/lintian-full.log
+          exit 0
+
+      - name: Inspect binary package
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb="$(find package-artifacts -maxdepth 1 -name 'spacefm_[0-9]*_*.deb' -print -quit)"
+          dpkg-deb -I "$deb" > audit-logs/deb-control.log
+          dpkg-deb -c "$deb" > audit-logs/deb-contents.log
+          dpkg-deb -e "$deb" extracted/DEBIAN
+          dpkg-deb -x "$deb" extracted/root
+          find extracted/DEBIAN -maxdepth 1 -type f -print -exec sh -c 'echo "===== $1 ====="; cat "$1"' sh {} \; \
+            > audit-logs/control-scripts.log
+          file extracted/root/usr/bin/spacefm > audit-logs/binary-file.log
+          readelf -hW extracted/root/usr/bin/spacefm > audit-logs/readelf-header.log
+          readelf -lW extracted/root/usr/bin/spacefm > audit-logs/readelf-program.log
+          readelf -dW extracted/root/usr/bin/spacefm > audit-logs/readelf-dynamic.log
+          hardening-check extracted/root/usr/bin/spacefm > audit-logs/hardening.log 2>&1 || true
+          cat audit-logs/hardening.log
+
+      - name: Validate installed metadata
+        shell: bash
+        run: |
+          set +e
+          : > audit-logs/package-desktop-validation.log
+          for f in extracted/root/usr/share/applications/*.desktop; do
+            desktop-file-validate "$f" >>audit-logs/package-desktop-validation.log 2>&1 || true
+          done
+          : > audit-logs/package-xml-validation.log
+          for f in extracted/root/usr/share/mime/packages/*.xml extracted/root/usr/share/spacefm/ui/*.ui; do
+            xmllint --noout "$f" >>audit-logs/package-xml-validation.log 2>&1 || true
+          done
+          cat audit-logs/package-desktop-validation.log
+          cat audit-logs/package-xml-validation.log
+          exit 0
+
+      - name: Upload package audit
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: full-polish-package-audit
+          path: |
+            audit-logs/
+            package-artifacts/
+          if-no-files-found: error
