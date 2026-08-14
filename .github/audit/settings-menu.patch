@@ -1,3 +1,5 @@
+diff --git a/src/main-window.h b/src/main-window.h
+index e53e4af..aada1b0 100644
 --- a/src/main-window.h
 +++ b/src/main-window.h
 @@ -36,6 +36,7 @@ typedef struct _FMMainWindow
@@ -8,9 +10,11 @@
      GtkWidget* help_menu_item;
      GtkWidget* dev_menu;
      GtkWidget* plug_menu;
+diff --git a/src/main-window.c b/src/main-window.c
+index 15d8360..89d3b0e 100644
 --- a/src/main-window.c
 +++ b/src/main-window.c
-@@ -616,13 +616,6 @@ GtkWidget* create_devices_menu( FMMainWindow* main_window )
+@@ -616,14 +616,6 @@ GtkWidget* create_devices_menu( FMMainWindow* main_window )
      xset_add_menuitem( NULL, file_browser, dev_menu, accel_group, set );
  
      ptk_location_view_dev_menu( GTK_WIDGET( file_browser ), file_browser, dev_menu );
@@ -25,7 +29,7 @@
      // show all
      gtk_widget_show_all( dev_menu );
  
-@@ -1773,6 +1766,7 @@ void rebuild_menus( FMMainWindow* main_window )
+@@ -1774,6 +1766,7 @@ void rebuild_menus( FMMainWindow* main_window )
  {
      GtkWidget* newmenu;
      GtkWidget* submenu;
@@ -33,13 +37,17 @@
      char* menu_elements;
      GtkAccelGroup* accel_group = gtk_accel_group_new();
      XSet* set;
-@@ -1860,7 +1854,7 @@ void rebuild_menus( FMMainWindow* main_window )
+@@ -1860,7 +1853,7 @@ void rebuild_menus( FMMainWindow* main_window )
          set->disable = ( main_window->curpanel == 4 );
  
      menu_elements = g_strdup_printf( "panel1_show panel2_show panel3_show panel4_show main_pbar main_focus_panel" );
 -    char* menu_elements2 = g_strdup_printf( "sep_v1 main_tasks main_auto sep_v2 main_title main_icon main_full sep_v3 main_design_mode main_prefs" );
 +    char* menu_elements2 = g_strdup_printf( "sep_v1 main_tasks main_auto sep_v2 main_title main_icon main_full sep_v3 main_design_mode" );
-@@ -1934,6 +1928,27 @@ void rebuild_menus( FMMainWindow* main_window )
+     
+     main_task_prepare_menu( main_window, newmenu, accel_group );
+     xset_add_menu( NULL, file_browser, newmenu, accel_group, menu_elements );
+@@ -1934,6 +1927,28 @@ void rebuild_menus( FMMainWindow* main_window )
+                       G_CALLBACK( xset_menu_keypress ), NULL );
      gtk_menu_item_set_submenu( GTK_MENU_ITEM( main_window->tool_menu_item ),
                                                              newmenu );
 +
@@ -55,25 +63,27 @@
 +    set = xset_get( "dev_menu_settings" );
 +    if ( set->desc )
 +        xset_add_menu( NULL, file_browser, submenu, accel_group, set->desc );
-+    gtk_widget_show_all( submenu );
++    gtk_widget_show_all( GTK_WIDGET( submenu ) );
 +    gtk_menu_item_set_submenu( GTK_MENU_ITEM( item ), submenu );
 +    gtk_menu_shell_append( GTK_MENU_SHELL( newmenu ), item );
 +#endif
-+    gtk_widget_show_all( newmenu );
++    gtk_widget_show_all( GTK_WIDGET( newmenu ) );
 +    g_signal_connect( newmenu, "key-press-event",
 +                      G_CALLBACK( xset_menu_keypress ), NULL );
-+    gtk_menu_item_set_submenu( GTK_MENU_ITEM( main_window->settings_menu_item ), newmenu );
- 
++    gtk_menu_item_set_submenu( GTK_MENU_ITEM( main_window->settings_menu_item ),
++                                                            newmenu );
+     
      // Help
      newmenu = gtk_menu_new();
 @@ -2079,6 +2094,9 @@ void fm_main_window_init( FMMainWindow* main_window )
-     main_window->tool_menu_item = gtk_menu_item_new_with_mnemonic( _( "_Tools" ) );
+ 
+     main_window->tool_menu_item = gtk_menu_item_new_with_mnemonic( _("_Tools") );
      gtk_menu_shell_append( GTK_MENU_SHELL( main_window->menu_bar ), main_window->tool_menu_item );
 +
-+    main_window->settings_menu_item = gtk_menu_item_new_with_mnemonic( _( "Setti_ngs" ) );
++    main_window->settings_menu_item = gtk_menu_item_new_with_mnemonic( _("Setti_ngs") );
 +    gtk_menu_shell_append( GTK_MENU_SHELL( main_window->menu_bar ), main_window->settings_menu_item );
      
-     main_window->help_menu_item = gtk_menu_item_new_with_mnemonic( _( "_Help" ) );
+     main_window->help_menu_item = gtk_menu_item_new_with_mnemonic( _("_Help") );
      gtk_menu_shell_append( GTK_MENU_SHELL( main_window->menu_bar ), main_window->help_menu_item );
 @@ -2181,6 +2199,8 @@ void fm_main_window_init( FMMainWindow* main_window )
                        G_CALLBACK( on_menu_bar_event ), main_window );
