@@ -1,0 +1,112 @@
+name: Sanitizer audit
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gtk2-asan-ubsan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev xvfb
+
+      - name: Build with sanitizers
+        shell: bash
+        run: |
+          set -euo pipefail
+          CFLAGS='-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined' \
+          LDFLAGS='-fsanitize=address,undefined' \
+            ./autogen.sh --with-gtk2
+          make -j"$(nproc)"
+
+      - name: Run instrumented smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DISPLAY=:99
+          export XDG_CONFIG_HOME=/tmp/spacefm-sanitize-config
+          export ASAN_OPTIONS='detect_leaks=0:halt_on_error=1:abort_on_error=1:log_path=/tmp/asan'
+          export UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=/tmp/ubsan'
+          rm -rf "$XDG_CONFIG_HOME" /tmp/spacefm-sanitize-src /dev/shm/spacefm-sanitize-dst
+          mkdir -p "$XDG_CONFIG_HOME" /tmp/spacefm-sanitize-src /dev/shm/spacefm-sanitize-dst
+          printf 'sanitizer payload\n' >/tmp/spacefm-sanitize-src/a.txt
+          dd if=/dev/urandom of=/tmp/spacefm-sanitize-src/blob.bin bs=1M count=2 status=none
+
+          Xvfb :99 -screen 0 1024x768x24 >/tmp/xvfb-sanitize.log 2>&1 &
+          xvfb_pid=$!
+          trap 'kill "$xvfb_pid" 2>/dev/null || true; pkill -x spacefm 2>/dev/null || true' EXIT
+
+          ./src/spacefm /tmp/spacefm-sanitize-src >/tmp/spacefm-sanitize.log 2>&1 &
+          app_pid=$!
+
+          ready=0
+          for i in $(seq 1 50); do
+            if ./src/spacefm -s get window_size >/tmp/socket-sanitize.log 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 0.2
+          done
+          test "$ready" -eq 1
+
+          ./src/spacefm -s get current_dir >>/tmp/socket-sanitize.log
+          ./src/spacefm -s run-task copy \
+            /tmp/spacefm-sanitize-src/blob.bin \
+            /dev/shm/spacefm-sanitize-dst
+
+          for i in $(seq 1 100); do
+            if test -f /dev/shm/spacefm-sanitize-dst/blob.bin; then
+              break
+            fi
+            sleep 0.1
+          done
+          cmp /tmp/spacefm-sanitize-src/blob.bin /dev/shm/spacefm-sanitize-dst/blob.bin
+
+          ./src/spacefm -s run-task move \
+            /dev/shm/spacefm-sanitize-dst/blob.bin \
+            /tmp/spacefm-sanitize-src/moved
+          for i in $(seq 1 100); do
+            if test -f /tmp/spacefm-sanitize-src/moved/blob.bin; then
+              break
+            fi
+            sleep 0.1
+          done
+          test -f /tmp/spacefm-sanitize-src/moved/blob.bin
+
+          kill "$app_pid" 2>/dev/null || true
+          wait "$app_pid" 2>/dev/null || true
+
+          if compgen -G '/tmp/asan*' >/dev/null; then
+            cat /tmp/asan* >&2
+            exit 1
+          fi
+          if compgen -G '/tmp/ubsan*' >/dev/null; then
+            cat /tmp/ubsan* >&2
+            exit 1
+          fi
+
+      - name: Upload sanitizer logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: sanitizer-audit-logs
+          path: |
+            /tmp/spacefm-sanitize.log
+            /tmp/socket-sanitize.log
+            /tmp/xvfb-sanitize.log
+            /tmp/asan*
+            /tmp/ubsan*
+          if-no-files-found: warn
