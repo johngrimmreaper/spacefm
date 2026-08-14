@@ -56,6 +56,9 @@ jobs:
           }
 
           run_target autogen ./autogen.sh --with-gtk2
+          git diff -- Makefile.in src/Makefile.in data/Makefile.in etc/Makefile.in configure configure.ac aclocal.m4 \
+            > audit-logs/generated-files.diff
+
           run_target make make -j"$(nproc)"
           run_target check make check
           run_target dist make dist
@@ -65,15 +68,15 @@ jobs:
             ls -l spacefm-*.tar.* 2>/dev/null || true
             for a in spacefm-*.tar.gz; do
               [ -e "$a" ] || continue
-              echo "=== $a selected contents ==="
-              tar -tzf "$a" | grep -E '(^|/)(gtk2-compat\.h|mount\.rules|spacefm-manual-en\.html|spacefm(-find|-root|-48-|-128-).*\.png|faenza/spacefm.*\.png)$' || true
+              echo "=== $a full contents ==="
+              tar -tzf "$a"
             done
             for a in spacefm-*.tar.bz2; do
               [ -e "$a" ] || continue
-              echo "=== $a selected contents ==="
-              tar -tjf "$a" | grep -E '(^|/)(gtk2-compat\.h|mount\.rules|spacefm-manual-en\.html|spacefm(-find|-root|-48-|-128-).*\.png|faenza/spacefm.*\.png)$' || true
+              echo "=== $a full contents ==="
+              tar -tjf "$a"
             done
-          } | tee audit-logs/dist-contents.log
+          } > audit-logs/dist-contents.log
 
           rm -rf _install
           mkdir -p _install
@@ -90,7 +93,7 @@ jobs:
           echo '=== target results ==='
           column -t -s $'\t' audit-logs/results.tsv || cat audit-logs/results.tsv
 
-          # Baseline audit intentionally does not fail the workflow; logs are the product.
+          # The audit workflow collects failures rather than masking later targets.
           exit 0
 
       - name: Upload audit logs
