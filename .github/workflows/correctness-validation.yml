@@ -1,0 +1,110 @@
+name: Correctness candidates
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gtk2
+            flags: --with-gtk2
+          - name: gtk3
+            flags: --with-gtk3
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libgtk-3-dev libstartup-notification0-dev libudev-dev libx11-dev
+
+      - name: Apply candidates
+        run: |
+          git apply .github/audit/correctness-candidates.patch
+          git diff --check
+
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          CFLAGS='-O2 -g -Wall -Wextra -Wformat=2' ./autogen.sh ${{ matrix.flags }}
+          make -j"$(nproc)" 2>&1 | tee /tmp/build-${{ matrix.name }}.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: correctness-${{ matrix.name }}
+          path: /tmp/build-${{ matrix.name }}.log
+          if-no-files-found: warn
+
+  analyzer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev
+
+      - name: Apply candidates
+        run: git apply .github/audit/correctness-candidates.patch
+
+      - name: GCC analyzer
+        shell: bash
+        run: |
+          set +e
+          CFLAGS='-O0 -g -fanalyzer -Wall -Wextra -Wformat=2' ./autogen.sh --with-gtk2
+          make -j1 > /tmp/gcc-analyzer.log 2>&1
+          rc=$?
+          grep -nE 'warning:|error:' /tmp/gcc-analyzer.log > /tmp/gcc-analyzer-diagnostics.log || true
+          cat /tmp/gcc-analyzer-diagnostics.log
+          exit "$rc"
+
+      - name: Reject targeted warnings
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pattern in \
+            'desktop.c.*uninitialized.*type' \
+            'vfs-file-task.c.*uninitialized.*sum' \
+            'ptk-file-task.c.*uninitialized.*cur_speed' \
+            'pref-dialog.c.*uninitialized.*bg2' \
+            'pref-dialog.c.*uninitialized.*tool_icon' \
+            'ptk-handler.c.*double.*fclose' \
+            'item-prop.c.*double.*fclose' \
+            'cust-dialog.c.*line.*bytes'; do
+            if grep -Ei "$pattern" /tmp/gcc-analyzer-diagnostics.log; then
+              echo "targeted warning remains: $pattern" >&2
+              exit 1
+            fi
+          done
+
+      - name: Upload analyzer log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: correctness-analyzer
+          path: |
+            /tmp/gcc-analyzer.log
+            /tmp/gcc-analyzer-diagnostics.log
+          if-no-files-found: warn
