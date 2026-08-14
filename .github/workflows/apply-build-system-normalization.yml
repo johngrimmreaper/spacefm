@@ -1,0 +1,144 @@
+name: Apply build-system normalization stack
+
+on:
+  push:
+    branches:
+      - audit/build-system-20260814
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.head_commit.message == 'ci: stage build-system normalization'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/build-system-20260814
+          fetch-depth: 0
+
+      - name: Configure commit identity
+        run: |
+          git config user.name 'Reaper'
+          git config user.email 'JohnGrimmReaper@disroot.org'
+
+      - name: Use po/LINGUAS as translation source of truth
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          old = '''dnl Add the languages which your application supports here.\nALL_LINGUAS="af ar da ca cs de es et eu fa fi fr gl he hr hu id it ja ko lt ml ms nb nl nn pl ps pt pt_BR ru sk sl sv tr uk ur ur_PK vi zh_CN zh_TW"\n'''
+          new = '''dnl po/LINGUAS is the authoritative list of shipped translations.\nALL_LINGUAS=`sed -e '/^#/d' -e '/^[[:space:]]*$/d' "$srcdir/po/LINGUAS"`\n'''
+          if s.count(old) != 1:
+              raise SystemExit(f'expected ALL_LINGUAS block once, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: use po/LINGUAS as translation source of truth'
+
+      - name: Teach bootstrap to recognize LT_INIT
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('autogen.sh')
+          s = p.read_text()
+          old1 = '(grep "^AM_PROG_LIBTOOL" $srcdir/$configure_ac >/dev/null) && {'
+          new1 = '(grep -E "^(AM_PROG_LIBTOOL|LT_INIT)" $srcdir/$configure_ac >/dev/null) && {'
+          old2 = '      if grep "^AM_PROG_LIBTOOL" $configure_ac >/dev/null; then'
+          new2 = '      if grep -E "^(AM_PROG_LIBTOOL|LT_INIT)" $configure_ac >/dev/null; then'
+          if s.count(old1) != 1 or s.count(old2) != 1:
+              raise SystemExit('unexpected libtool bootstrap probes')
+          s = s.replace(old1, new1, 1).replace(old2, new2, 1)
+          p.write_text(s)
+          PY
+          git diff --check
+          git add autogen.sh
+          git commit -m 'build: recognize LT_INIT during bootstrap'
+
+      - name: Modernize libtool initialization
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          old = '''AM_DISABLE_STATIC\n\nAC_ISC_POSIX\nAC_PROG_CC\nAM_PROG_LIBTOOL\n'''
+          new = '''AC_ISC_POSIX\nAC_PROG_CC\nLT_INIT([disable-static])\n'''
+          if s.count(old) != 1:
+              raise SystemExit(f'expected libtool init block once, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: initialize libtool with LT_INIT'
+
+      - name: Drop obsolete ISC POSIX probe
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          old = 'AC_ISC_POSIX\n'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected AC_ISC_POSIX once, found {s.count(old)}')
+          p.write_text(s.replace(old, '', 1))
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: drop obsolete ISC POSIX probe'
+
+      - name: Drop obsolete compiler and header probes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          for old in ('AM_PROG_CC_STDC\n', 'AC_HEADER_STDC\n'):
+              if s.count(old) != 1:
+                  raise SystemExit(f'expected {old.strip()} once, found {s.count(old)}')
+              s = s.replace(old, '', 1)
+          p.write_text(s)
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: drop obsolete compiler and header probes'
+
+      - name: Use modern help-string macro
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          old = 'AC_HELP_STRING([--with-bash-path=PATH], [Absolute path to GENUINE bash v4 - other shells lack features REQUIRED by SpaceFM (default: /bin/bash)])'
+          new = 'AS_HELP_STRING([--with-bash-path=PATH], [Absolute path to GENUINE bash v4 - other shells lack features REQUIRED by SpaceFM (default: /bin/bash)])'
+          if s.count(old) != 1:
+              raise SystemExit(f'expected AC_HELP_STRING once, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: use AS_HELP_STRING for bash option'
+
+      - name: Modernize configure output declarations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('configure.ac')
+          s = p.read_text()
+          old = '''AC_OUTPUT([\nMakefile\netc/Makefile\nsrc/Makefile\npo/Makefile.in\ndata/Makefile\n])\n'''
+          new = '''AC_CONFIG_FILES([\nMakefile\netc/Makefile\nsrc/Makefile\npo/Makefile.in\ndata/Makefile\n])\nAC_OUTPUT\n'''
+          if s.count(old) != 1:
+              raise SystemExit(f'expected old AC_OUTPUT block once, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+          git add configure.ac
+          git commit -m 'build: modernize configure output declarations'
+
+      - name: Push atomic normalization commits
+        run: |
+          git log --oneline -7
+          git push origin HEAD:audit/build-system-20260814
