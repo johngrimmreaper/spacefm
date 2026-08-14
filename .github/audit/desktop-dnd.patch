@@ -1,0 +1,11 @@
+--- a/src/desktop/desktop-window.c
++++ b/src/desktop/desktop-window.c
+@@ -1717,7 +1717,7 @@ static char** get_files_from_selection_data(GtkSelectionData* data)
+                 int n = g_strv_length( pfile + 1 );
+                 if( n > 0 )
+                 {
+-                    memmove( pfile, file + sizeof(char*), sizeof(char*) * (n + 1) );    /* omit the path if conversion fails */
++                    memmove( pfile, pfile + 1, sizeof(char*) * (n + 1) );    /* omit the path if conversion fails */
+                     --pfile;
+                 }
+                 else
