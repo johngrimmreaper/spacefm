@@ -8,8 +8,28 @@ on:
 
 jobs:
   audit:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gtk2-default
+            flags: --with-gtk2
+          - name: gtk3-default
+            flags: --with-gtk3
+          - name: gtk2-pixmaps
+            flags: --with-gtk2 --enable-pixmaps
+          - name: gtk2-no-desktop
+            flags: --with-gtk2 --disable-desktop-integration
+          - name: gtk2-no-video
+            flags: --with-gtk2 --disable-video-thumbnails
+          - name: gtk2-no-startup
+            flags: --with-gtk2 --disable-startup-notification
+          - name: gtk2-minimal-features
+            flags: --with-gtk2 --disable-desktop-integration --disable-video-thumbnails --disable-startup-notification --disable-btrfs-clone
+
     steps:
       - name: Checkout exact audit branch
         uses: actions/checkout@v4
@@ -22,8 +42,8 @@ jobs:
           sudo apt-get install -y \
             build-essential \
             autoconf automake libtool intltool gettext pkg-config \
-            libgtk2.0-dev libudev-dev libstartup-notification0-dev \
-            libffmpegthumbnailer-dev libx11-dev
+            libgtk2.0-dev libgtk-3-dev libudev-dev \
+            libstartup-notification0-dev libffmpegthumbnailer-dev libx11-dev
 
       - name: Record environment
         run: |
@@ -31,6 +51,8 @@ jobs:
           {
             echo "commit=$(git rev-parse HEAD)"
             echo "branch=$(git branch --show-current)"
+            echo "configuration=${{ matrix.name }}"
+            echo "flags=${{ matrix.flags }}"
             gcc --version | head -1
             autoconf --version | head -1
             automake --version | head -1
@@ -39,11 +61,14 @@ jobs:
           } | tee audit-logs/environment.log
 
       - name: Run build-system target matrix
+        id: targets
         shell: bash
         run: |
           set +e
           mkdir -p audit-logs
           : > audit-logs/results.tsv
+          overall=0
+          flags='${{ matrix.flags }}'
 
           run_target() {
             name="$1"
@@ -52,11 +77,16 @@ jobs:
             ( set -o pipefail; "$@" 2>&1 | tee "audit-logs/${name}.log" )
             rc=${PIPESTATUS[0]}
             printf '%s\t%s\n' "$name" "$rc" | tee -a audit-logs/results.tsv
+            if test "$rc" -ne 0; then
+              overall=1
+            fi
             return 0
           }
 
-          run_target autogen ./autogen.sh --with-gtk2
-          git diff -- Makefile.in src/Makefile.in data/Makefile.in etc/Makefile.in configure configure.ac aclocal.m4 \
+          # Word splitting of flags is intentional: these are controlled matrix values.
+          run_target autogen ./autogen.sh $flags
+          git diff -- Makefile.in src/Makefile.in data/Makefile.in etc/Makefile.in \
+            po/Makefile.in.in configure configure.ac aclocal.m4 \
             > audit-logs/generated-files.diff
 
           run_target make make -j"$(nproc)"
@@ -87,19 +117,18 @@ jobs:
           run_target distclean make distclean
 
           # Reconfigure after distclean, then exercise Automake's full distcheck chain.
-          run_target reconfigure ./configure --with-gtk2
-          run_target distcheck make distcheck DISTCHECK_CONFIGURE_FLAGS='--with-gtk2'
+          run_target reconfigure ./configure $flags
+          run_target distcheck make distcheck DISTCHECK_CONFIGURE_FLAGS="$flags"
 
           echo '=== target results ==='
           column -t -s $'\t' audit-logs/results.tsv || cat audit-logs/results.tsv
 
-          # The audit workflow collects failures rather than masking later targets.
-          exit 0
+          exit "$overall"
 
       - name: Upload audit logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: spacefm-build-system-audit
+          name: spacefm-build-system-audit-${{ matrix.name }}
           path: audit-logs/
           if-no-files-found: error
