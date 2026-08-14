@@ -1,0 +1,39 @@
+--- a/src/vfs/vfs-file-task.c
++++ b/src/vfs/vfs-file-task.c
+@@ -160,6 +160,18 @@
+ * skip/overwrite/auto-rename/all, pause, or cancel.
+ * The returned string is the new destination file chosen by the user
+ */
++static gboolean same_file( const char* src_file, const char* dest_file )
++{
++    struct stat64 src_stat;
++    struct stat64 dest_stat;
++
++    return src_file && dest_file
++            && !lstat64( src_file, &src_stat )
++            && !lstat64( dest_file, &dest_stat )
++            && src_stat.st_dev == dest_stat.st_dev
++            && src_stat.st_ino == dest_stat.st_ino;
++}
++
+ static
+ gboolean check_overwrite( VFSFileTask* task,
+                           const gchar* dest_file,
+@@ -176,7 +188,7 @@
+         if ( task->overwrite_mode == VFS_FILE_TASK_OVERWRITE_ALL )
+         {
+             *dest_exists = !lstat64( dest_file, &dest_stat );
+-            if ( !g_strcmp0( task->current_file, task->current_dest ) )
++            if ( same_file( task->current_file, task->current_dest ) )
+             {
+                 // src and dest are same file - don't overwrite (truncates)
+                 // occurs if user pauses task and changes overwrite mode
+@@ -251,7 +263,7 @@
+                             task->overwrite_mode == VFS_FILE_TASK_OVERWRITE_ALL )
+                 {
+                     *dest_exists = !lstat64( dest_file, &dest_stat );
+-                    if ( !g_strcmp0( task->current_file, task->current_dest ) )
++                    if ( same_file( task->current_file, task->current_dest ) )
+                     {
+                         // src and dest are same file - don't overwrite (truncates)
+                         // occurs if user pauses task and changes overwrite mode
