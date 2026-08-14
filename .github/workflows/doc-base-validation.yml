@@ -1,0 +1,77 @@
+name: Debian doc-base regression
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential devscripts equivs lintian doc-base
+
+      - name: Check doc-base file
+        run: install-docs --check debian/spacefm.doc-base
+
+      - name: Install build dependencies
+        run: |
+          mk-build-deps \
+            --install \
+            --remove \
+            --root-cmd=sudo \
+            --tool='apt-get -y --no-install-recommends' \
+            debian/control
+
+      - name: Build package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package-artifacts
+          dpkg-buildpackage -us -uc -b
+          find .. -maxdepth 1 -type f \
+            \( -name 'spacefm_*.deb' \
+               -o -name 'spacefm-dbgsym_*.ddeb' \
+               -o -name 'spacefm_*.changes' \
+               -o -name 'spacefm_*.buildinfo' \) \
+            -exec cp -v {} package-artifacts/ \;
+
+      - name: Verify installed registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          deb="$(find package-artifacts -maxdepth 1 -name 'spacefm_[0-9]*_*.deb' -print -quit)"
+          dpkg-deb -c "$deb" | tee /tmp/package-contents.log
+          grep -F 'usr/share/doc-base/spacefm' /tmp/package-contents.log
+
+      - name: Run exhaustive Lintian
+        shell: bash
+        run: |
+          set -euo pipefail
+          changes="$(find package-artifacts -maxdepth 1 -name 'spacefm_*.changes' -print -quit)"
+          lintian -I -E --pedantic --show-overrides "$changes" 2>&1 | tee /tmp/lintian-full.log
+          if grep -F 'possible-documentation-but-no-doc-base-registration' /tmp/lintian-full.log; then
+            echo 'doc-base registration still not recognized' >&2
+            exit 1
+          fi
+
+      - name: Upload audit logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: doc-base-validation
+          path: |
+            /tmp/lintian-full.log
+            /tmp/package-contents.log
+            package-artifacts/
+          if-no-files-found: warn
