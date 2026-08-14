@@ -1,0 +1,67 @@
+--- a/src/vfs/vfs-file-task.c
++++ b/src/vfs/vfs-file-task.c
+@@ -591,26 +591,55 @@
+                 }
+                 else
+                 {
+-                    while ( ( rsize = read( rfd, buffer, sizeof( buffer ) ) ) > 0 )
++                    while ( 1 )
+                     {
+-                        if ( should_abort( task ) )
++                        rsize = read( rfd, buffer, sizeof( buffer ) );
++                        if ( rsize == 0 )
++                            break;
++                        if ( rsize < 0 )
+                         {
++                            if ( errno == EINTR )
++                                continue;
++                            vfs_file_task_error( task, errno, _("Reading"), src_file );
+                             copy_fail = TRUE;
+                             break;
+                         }
+ 
+-                        if ( write( wfd, buffer, rsize ) > 0 )
++                        ssize_t written = 0;
++                        while ( written < rsize )
+                         {
++                            ssize_t wsize;
++
++                            if ( should_abort( task ) )
++                            {
++                                copy_fail = TRUE;
++                                break;
++                            }
++
++                            wsize = write( wfd, buffer + written, rsize - written );
++                            if ( wsize < 0 )
++                            {
++                                if ( errno == EINTR )
++                                    continue;
++                                vfs_file_task_error( task, errno, _("Writing"), dest_file );
++                                copy_fail = TRUE;
++                                break;
++                            }
++                            if ( wsize == 0 )
++                            {
++                                errno = EIO;
++                                vfs_file_task_error( task, errno, _("Writing"), dest_file );
++                                copy_fail = TRUE;
++                                break;
++                            }
++
++                            written += wsize;
+                             g_mutex_lock( task->mutex );
+-                            task->progress += rsize;
++                            task->progress += wsize;
+                             g_mutex_unlock( task->mutex );
+                         }
+-                        else
+-                        {
+-                            vfs_file_task_error( task, errno, _("Writing"), dest_file );
+-                            copy_fail = TRUE;
++                        if ( copy_fail )
+                             break;
+-                        }
+                     }
+                 }
+                 close( wfd );
