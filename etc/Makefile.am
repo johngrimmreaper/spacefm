@@ -7,3 +7,7 @@ install-data-hook:
 				$(srcdir)/spacefm.conf \
 				$(DESTDIR)/$(sysconfdir)/spacefm/spacefm.conf
 
+uninstall-hook:
+	$(RM) $(DESTDIR)/$(sysconfdir)/spacefm/spacefm.conf
+	-rmdir $(DESTDIR)/$(sysconfdir)/spacefm
+
