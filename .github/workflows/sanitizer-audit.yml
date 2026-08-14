@@ -41,7 +41,11 @@ jobs:
           export ASAN_OPTIONS='detect_leaks=0:halt_on_error=1:abort_on_error=1:log_path=/tmp/asan'
           export UBSAN_OPTIONS='halt_on_error=1:print_stacktrace=1:log_path=/tmp/ubsan'
           rm -rf "$XDG_CONFIG_HOME" /tmp/spacefm-sanitize-src /dev/shm/spacefm-sanitize-dst
-          mkdir -p "$XDG_CONFIG_HOME" /tmp/spacefm-sanitize-src /dev/shm/spacefm-sanitize-dst
+          mkdir -p \
+            "$XDG_CONFIG_HOME" \
+            /tmp/spacefm-sanitize-src \
+            /tmp/spacefm-sanitize-src/moved \
+            /dev/shm/spacefm-sanitize-dst
           printf 'sanitizer payload\n' >/tmp/spacefm-sanitize-src/a.txt
           dd if=/dev/urandom of=/tmp/spacefm-sanitize-src/blob.bin bs=1M count=2 status=none
 
