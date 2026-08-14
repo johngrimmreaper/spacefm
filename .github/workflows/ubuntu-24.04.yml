@@ -163,30 +163,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare package logging
+        run: mkdir -p ci-logs package-artifacts
+
       - name: Install packaging tools
+        shell: bash
         run: |
-          sudo apt-get update
+          set -o pipefail
+          sudo apt-get update 2>&1 | tee ci-logs/apt-update.log
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             devscripts \
             equivs \
             lintian \
             xauth \
-            xvfb
+            xvfb 2>&1 | tee ci-logs/packaging-tools.log
 
       - name: Install package build dependencies
+        shell: bash
         run: |
+          set -o pipefail
           mk-build-deps \
             --install \
             --remove \
-            --tool='sudo apt-get -y --no-install-recommends' \
-            debian/control
+            --root-cmd=sudo \
+            --tool='apt-get -y --no-install-recommends' \
+            debian/control 2>&1 | tee ci-logs/mk-build-deps.log
 
       - name: Build binary package
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p ci-logs package-artifacts
 
           {
             echo "commit=$(git rev-parse HEAD)"
@@ -226,7 +233,8 @@ jobs:
           deb="$(find package-artifacts -maxdepth 1 -name 'spacefm_[0-9]*_*.deb' -print -quit)"
           test -n "$deb"
 
-          sudo apt-get install -y "$PWD/$deb"
+          sudo apt-get install -y "$PWD/$deb" 2>&1 \
+            | tee ci-logs/package-install.log
           dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' spacefm \
             | tee ci-logs/installed-package.log
           xvfb-run -a spacefm --version \
