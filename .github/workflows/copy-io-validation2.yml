@@ -1,0 +1,49 @@
+name: Copy I/O regression
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential autoconf automake gettext intltool libtool pkg-config \
+            libbtrfs-dev libffmpegthumbnailer-dev libglib2.0-dev libgtk2.0-dev \
+            libstartup-notification0-dev libudev-dev libx11-dev xvfb
+
+      - name: Apply candidate fix
+        run: git apply .github/audit/copy-io.patch
+
+      - name: Build
+        run: |
+          ./autogen.sh --with-gtk2
+          make -j"$(nproc)"
+
+      - name: Build fault injector
+        run: |
+          gcc -shared -fPIC -Wall -Wextra -O2 \
+            -o .github/audit/libspacefm-iofault.so \
+            .github/audit/iofault.c -ldl
+
+      - name: Run regression test
+        run: bash .github/audit/test-copy-io.sh
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: copy-io-regression-logs
+          path: /tmp/spacefm-*.log
+          if-no-files-found: warn
