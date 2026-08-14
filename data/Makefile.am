@@ -99,7 +99,7 @@ endif
 
 # html-doc
 htmldir = @htmldir@
-html_DATA = spacefm-manual-en.html
+dist_html_DATA = spacefm-manual-en.html
 
 # GtkBuilder UI definition files
 ui_in_files= \
