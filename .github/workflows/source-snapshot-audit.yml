@@ -1,0 +1,51 @@
+name: Source snapshot audit
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Record source identity
+        run: |
+          printf '%s\n' "$(git rev-parse HEAD^)" > SOURCE_BASE_COMMIT
+          printf '%s\n' "$(git rev-parse HEAD)" > SOURCE_AUDIT_COMMIT
+
+      - name: Upload source tree
+        uses: actions/upload-artifact@v5
+        with:
+          name: spacefm-source-snapshot
+          path: |
+            .gitattributes
+            .gitignore
+            AUTHORS
+            COPYING
+            COPYING-LGPL
+            ChangeLog
+            INSTALL
+            Makefile.am
+            NEWS
+            README
+            autogen.sh
+            configure.ac
+            data/
+            debian/
+            etc/
+            po/
+            src/
+            spacefm-installer
+            SOURCE_BASE_COMMIT
+            SOURCE_AUDIT_COMMIT
+          include-hidden-files: true
+          if-no-files-found: error
