@@ -210,6 +210,7 @@ jobs:
 
           find .. -maxdepth 1 -type f \
             \( -name 'spacefm_*.deb' \
+               -o -name 'spacefm-dbgsym_*.ddeb' \
                -o -name 'spacefm_*.changes' \
                -o -name 'spacefm_*.buildinfo' \) \
             -print \
